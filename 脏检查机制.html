@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>脏检查机制</title>
+</head>
+<body>
+    <input type="text" h-event="value" h-bind="value" id="input"/>
+    <p h-event="text" h-bind="value" id="text"></p>
+
+    <script>
+        let elems = [document.getElementById('text'), document.getElementById('input')];
+        // 定义数据
+        let data = {
+            value: 'hello'
+        };
+        // 定义Directive
+        let directive = {
+            text: function(val) {
+                this.innerHTML = val;
+            },
+            value: function(val) {
+                this.setAttribute('value', val);
+            }
+        };
+
+        // 初始化扫描节点
+        scan(elems);
+        $digest('value');
+
+        // 输入框数据绑定监('听
+        if (document.addEventListener) {
+            elems[1].addEventListener('keyup', (e) => {
+                data.value = e.target.value;
+                $digest(e.target.getAttribute('h-bind'));
+            }, false);
+        } else {
+            elems[1].attachEvent('onkeyup', (e) => {
+                data.value = e.target.value;
+                $digest(e.target.getAttribute('h-bind'))
+            }, false)
+        }
+
+        setTimeout(() => {
+            data.value = 'hello world';
+            // 执行$digest方法来启动脏值检查
+            $digest('value');
+        }, 2000)
+
+        function scan(elems) {
+            // 扫描带指令的节点属性
+            for(let elem of elems) {
+                elem.directive = [];
+            }
+        };
+        // 数据劫持监听
+        function $digest(value) {
+            let list = document.querySelectorAll(`[h-bind=${value}]`);
+            digest(list);
+        }
+        // 脏数据循环检测
+        function digest(elems) {
+            for (let i = 0, len = elems.length; i < len; i++) {
+                let elem = elems[i];
+                for(let j = 0, len1 = elem.attributes.length; j< len1; j++) {
+                    let attr = elem.attributes[j];
+                    if (attr.nodeName.indexOf('h-event') >= 0) {
+                        // 调用属性指令
+                        let dataKey = elem.getAttribute(`h-bind`) || undefined;
+                        // 进行脏数据检测 如果数据发生改变 则重新执行指令，否则跳过
+                        if (elem.directive[attr.nodeValue] !== data[dataKey]) {
+                            directive[attr.nodeValue].call(elem, data[dataKey]);
+                            elem.directive[attr.nodeValue] = data[dataKey];
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
