@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>数据劫持</title>
+</head>
+<body>
+    <input type="text" h-value="value" id="input"/>
+    <p h-text="value" id="el"></p>
+
+    <script>
+        let elems = [document.getElementById('el'), document.getElementById('input')];
+
+        // 定义数据
+        let data = {
+            value: 'hello'
+        }
+
+        // 定义Directive
+        let directive = {
+            text: function(val) {
+                this.innerHTML = val;
+            },
+            value: function(val) {
+                this.setAttribute('value', val);
+            }
+        }
+
+        let bValue;
+        scan(); // 扫描节点
+
+        defineGetAndSet(data, 'value'); // 添加数据劫持监听
+
+        // 数据绑定监听
+        elems[1].addEventListener('keyup', function(e) {
+            data.value = e.target.value;
+        }, false);
+
+        // 模拟修改数据
+        setTimeout(() => {
+            data.value = 'hello world';
+        }, 2000);
+
+        // 定义扫描事件
+        function scan() {
+            for (let elem of elems) {
+                elem.directive = [];
+                for (let attr of elem.attributes) {
+                    // 遍历元素上的属性
+                    if (attr.nodeName.indexOf('h-') >=0 ) {
+                        // 说明是自定义的Directive
+                        // 调用Directive
+                        directive[attr.nodeName.slice(2)].call(elem, data[attr.nodeValue]);
+                        elem.directive.push(attr.nodeName.slice(2));
+                    }
+                }
+            }
+        }
+        // 定义对象属性设置劫持
+        function defineGetAndSet(obj, propName) {
+            Object.defineProperty(obj, propName, {
+                enumerable: true,
+                configurable: true,
+                get: function () {
+                    return bValue;
+                },
+                set: function(val){ 
+                    bValue = val;
+                    scan();
+                }
+            })
+        }
+    </script>
+</body>
+</html>
