@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <input type="text" h-value='value' id="input"/>
+    <p id="el" h-text='value'></p>
+    <script>
+        let elems = [document.getElementById('el'), document.getElementById('input')];
+        // 定义Directive
+        let directive = {
+            value: function(val) {
+                this.setAttribute('value', val);
+            },
+            text: function(val) {
+                this.innerHTML = val;
+            }
+        }
+        // 设置data访问的Proxy
+        let data = new Proxy({}, {
+            get: function(target, key, receive) {
+                return target.value;
+            },
+            set: function(target, key, value, receive) {
+                target.value = value;
+                scan();
+                return target.value;
+            }
+        });
+
+        data['value'] = 'hello';
+        scan();
+
+        // 数据绑定监听
+        elems[1].addEventListener('keyup', function(e) {
+            data.value = e.target.value;
+        }, false);
+
+        setTimeout(() => {
+            data.value = 'hello world';
+        }, 1000);
+
+        function scan() {
+            for(let elem of elems) {
+                elem.directive = [];
+                for (let attr of elem.attributes) {
+                    if (attr.nodeName.indexOf('h-') >= 0) {
+                        // 调用指令
+                        directive[attr.nodeName.slice(2)].call(elem, data[attr.nodeValue]);
+                        elem.directive.push(attr.nodeName.slice(2));
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
